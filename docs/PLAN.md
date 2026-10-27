@@ -23,9 +23,9 @@ Each step is one commit (or a few); work pauses after each one for review.
 | 0b | Files moved into the plugin layout | done, `d1ef509` |
 | 0c | The [plugin template](https://github.com/stpalan/slidemage-plugin-template) adopted: `plugin.toml`, `build.py`, Check and Release workflows, README, CHANGELOG | done, `14b57ec` |
 | 1 | The package needs only the standard library; what needs SlideMage's internals is in `bridge/`; Check runs the tests | done, `b7c891e` |
-| 2 | The host interface, drafted | done |
-| 3 | The Course tab and the box | done |
-| 4 | Moving over the old schedule cache | |
+| 2 | The host interface, drafted | done, `9d5a6b9` |
+| 3 | The Course tab and the box | done, `df91066`; the box's title and sessions cached since `6922913` |
+| 4 | Moving over the old schedule cache | done, `3d22a40` (`adopt_legacy_cache`, called in `activate()` with `host.legacy_cache_dir()`) |
 | 5 | The real `slidemage.plugin_api` | waits for SlideMage |
 | 6 | The public repository and 1.0.0 | waits for 5 |
 
