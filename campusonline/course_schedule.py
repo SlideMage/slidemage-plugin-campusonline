@@ -10,11 +10,14 @@ what else they return.
 """
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import date, datetime
 import json
+import os
 from pathlib import Path
 import re
+import shutil
 from typing import Optional, Union
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
@@ -146,6 +149,7 @@ def fetch_schedule(course_url: str) -> CourseSchedule:
 # does), kept in the plugin's cache folder. Until use_cache_folder() names that folder nothing is kept and no
 # course is soon.
 
+_CACHE_FILE_NAME = "course-schedules.json"
 _cache_folder: Optional[Path] = None
 
 
@@ -156,7 +160,7 @@ def use_cache_folder(folder: Optional[Path]) -> None:
 
 
 def _cache_file() -> Optional[Path]:
-    return None if _cache_folder is None else _cache_folder / "course-schedules.json"
+    return None if _cache_folder is None else _cache_folder / _CACHE_FILE_NAME
 
 
 def remember_schedule(course_url: str, schedule: CourseSchedule) -> None:
@@ -175,6 +179,30 @@ def remember_schedule(course_url: str, schedule: CourseSchedule) -> None:
         path.write_text(json.dumps(known), encoding="utf-8")
     except Exception:  # noqa: BLE001
         pass
+
+
+def adopt_legacy_cache(legacy_folder: Path | None) -> bool:
+    """Copy the session dates SlideMage kept before the plugin existed (`legacy_folder`) into the plugin's cache
+    folder, so a course that meets soon still counts without a refetch. Called once from activate(). Never
+    overwrites an existing plugin cache, never moves or deletes the old file, and copies nothing that is not valid
+    JSON. Local files only, and cheap."""
+    path = _cache_file()
+    if path is None or legacy_folder is None or path.exists():
+        return False
+    source = Path(legacy_folder) / _CACHE_FILE_NAME
+    if not source.is_file():
+        return False
+    temporary = path.with_name(path.name + ".partial")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, temporary)
+        json.loads(temporary.read_text(encoding="utf-8"))
+        os.replace(temporary, path)
+        return True
+    except (OSError, ValueError):
+        with suppress(OSError):
+            temporary.unlink(missing_ok=True)
+        return False
 
 
 def session_soon(course_url: Optional[str], *, days: int = 7, today: Optional[date] = None) -> bool:
