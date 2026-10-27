@@ -23,7 +23,7 @@ Each step is one commit (or a few); work pauses after each one for review.
 | 0b | Files moved into the plugin layout | done, `d1ef509` |
 | 0c | The [plugin template](https://github.com/stpalan/slidemage-plugin-template) adopted: `plugin.toml`, `build.py`, Check and Release workflows, README, CHANGELOG | done, `14b57ec` |
 | 1 | The package needs only the standard library; what needs SlideMage's internals is in `bridge/`; Check runs the tests | done, `b7c891e` |
-| 2 | The host interface, drafted | next |
+| 2 | The host interface, drafted | done |
 | 3 | The Course tab and the box | |
 | 4 | Moving over the old schedule cache | |
 | 5 | The real `slidemage.plugin_api` | waits for SlideMage |
@@ -60,6 +60,19 @@ The calls, mapped to what SlideMage `develop` already has, so the host can be th
 | `open_url(url)` | Open course page | `open_path.open_in_default_app` |
 | a deck: `name`, `path`, `text`, `groups` | the course link, whether it is a Course deck | `deck_scan.Deck` |
 | widgets: `Page`, `Field`, `caption` | the tab and the box look like SlideMage | `ui/kit/widgets.py` |
+
+Deviations from the table, as built in `campusonline/host.py`:
+
+- `legacy_cache_dir() -> Path | None` added (step 4).
+- `open_deck_settings(deck, tab=None)` added: "Admin slides…" has to open the Deck settings sheet on the Course
+  tab, as SlideMage's own `on_admin_slides` does.
+- `add_deck_settings_tab`'s `footer_action` is a `FooterAction(label, run, enabled)`; `Page`, `Field` and
+  `caption` are methods of the host (the widgets need SlideMage's Qt kit); `run`/`enabled`/`when` take the
+  current `Deck` (`enabled` gets None when no deck is open).
+- `run_in_background(work, done)`: `done(result, error)` on the UI thread. `add_render_priority`'s `soon` is
+  documented as called on a worker thread, so it must be thread-safe and read only the cache.
+- `edit_deck_text` returns the new text and raises `StaleFileError`; `insert_positions` returns
+  `InsertPosition(label, insert_at, indent)`; the course group is the tag `"course"` in `Deck.groups`.
 
 The handover's `add_deck_marker("course URL")` is replaced by `edit_deck_text` plus the plugin's own
 `course_link`: a general text edit is smaller than a marker API and covers this case.
