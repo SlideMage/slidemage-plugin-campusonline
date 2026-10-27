@@ -7,7 +7,6 @@ the plan), and then this folder goes:
 
     insert.insert_admin_slides   making slide files of planned frames and adding them to the deck
     insert.set_course_url        writing a deck's course link (the deck text edit is course_link's)
-    deck_tab.AdminSlidesTab      the tab, built from SlideMage's kit widgets
 
 Its tests (tests/bridge/) run only where SlideMage can be imported.
 """

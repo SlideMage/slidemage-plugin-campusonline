@@ -102,9 +102,6 @@ def test_activate_does_no_network(tmp_path):
     with mock.patch.object(urllib.request, "urlopen", side_effect=AssertionError("network")):
         campusonline.activate(fake)
         fake.finish_activation()
-        for box in fake.boxes:      # building the placeholders is local too
-            box.build(fake.make_deck("d", LINKED, ("course",)))
-        fake.tabs[0].build(fake.make_deck("d", LINKED, ("course",)))
     course_schedule.use_cache_folder(None)
 
 

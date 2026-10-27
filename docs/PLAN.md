@@ -24,7 +24,7 @@ Each step is one commit (or a few); work pauses after each one for review.
 | 0c | The [plugin template](https://github.com/stpalan/slidemage-plugin-template) adopted: `plugin.toml`, `build.py`, Check and Release workflows, README, CHANGELOG | done, `14b57ec` |
 | 1 | The package needs only the standard library; what needs SlideMage's internals is in `bridge/`; Check runs the tests | done, `b7c891e` |
 | 2 | The host interface, drafted | done |
-| 3 | The Course tab and the box | |
+| 3 | The Course tab and the box | done |
 | 4 | Moving over the old schedule cache | |
 | 5 | The real `slidemage.plugin_api` | waits for SlideMage |
 | 6 | The public repository and 1.0.0 | waits for 5 |
@@ -79,11 +79,25 @@ The handover's `add_deck_marker("course URL")` is replaced by `edit_deck_text` p
 
 ### 3. The Course tab and the box
 
-- `campusonline/ui/deck_tab.py`: today's `bridge/deck_tab.py` plus the course link field with Open (now in
-  SlideMage's General tab), built only from the host's widgets.
-- `campusonline/ui/box.py`: a compact box shown for a deck with a course link: course title, the next session
-  (date, time, room), Open course page, Admin slides…. It shows the cached schedule and never fetches.
-- A sketch of both for Stefan before building, so `add_deck_settings_tab` and `add_sidebar_box` fit them.
+- `campusonline/ui/deck_tab.py`: today's `bridge/deck_tab.py` (now deleted) plus the course link field with Open
+  (now in SlideMage's General tab), built only from the host's widgets and calls. The sheet's footer button of
+  the tab is "Insert slides", so the link has its own **"Save link" button** (also Return in the field); it
+  writes through `edit_deck_text`. The deck is a snapshot, so after saving the tab says to reopen Deck settings
+  instead of fetching a course it could not insert into (as today: save on General, then open Admin slides).
+  The course is fetched with `run_in_background` when the tab is first shown; the footer action is
+  `FooterAction("Insert slides", run=page.controller.insert, enabled=page.controller.can_insert)`, and the tab
+  emits `changed` whenever the planned slides change.
+- `campusonline/ui/box.py`: a compact box shown for a deck with a course link: course title, the next session,
+  Open course page, Admin slides…. It shows the cached schedule and never fetches. What it says is worked out
+  by `campusonline/course_box.py` (pure, tested without Qt). **The cache holds only the session dates**
+  (`{course number: {fetched, dates}}`), so today the box shows "Course <number> at <host>" for the title and
+  "Next session: Mon 12.10.2026" without time and room; with nothing cached it says to open the Course tab.
+  `course_box` already shows `title` and `sessions` (`date`, `start`, `end`, `location`) if the cache entry has
+  them: `course_schedule.remember_schedule` would have to store them (also the title from the course detail).
+  The Course tab's fetch (`fetch_schedule`) already fills the cache.
+- No change to `Host`. `course_box.cached_entry` uses `course_schedule`'s private `_cache_file` and
+  `_course_number`; a public reader there would be cleaner.
+- `tests/fake_host.py`: `Page`, `Field` and `caption` return real PySide6 widgets when PySide6 is installed.
 
 ### 4. Moving over the old schedule cache
 

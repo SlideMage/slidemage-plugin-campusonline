@@ -37,6 +37,7 @@ def activate(host: Host) -> None:
 
     Runs at start: it registers and sets a folder, and does no network or slow work."""
     course_schedule.use_cache_folder(host.cache_dir())
+    course_schedule.adopt_legacy_cache(host.legacy_cache_dir())     # once: SlideMage kept the dates before the plugin
 
     def admin_slides(deck: Deck) -> None:
         host.open_deck_settings(deck, TAB_TITLE)
@@ -51,25 +52,22 @@ def activate(host: Host) -> None:
     host.add_menu_entry("deck", COMMAND_ADMIN_SLIDES)
     host.add_menu_entry("deck", COMMAND_OPEN_COURSE_PAGE)
 
+    # The widgets import PySide6, so they are imported when SlideMage builds one, not at start.
+    def build_tab(deck: Deck) -> Widget:
+        from .ui import deck_tab
+        return deck_tab.build_tab(host, deck)
+
+    def build_box(deck: Deck) -> Widget:
+        from .ui import box
+        return box.build_box(host, deck)
+
     host.add_deck_settings_tab(
-        TAB_TITLE, lambda deck: _build_tab(host, deck),
-        footer_action=FooterAction("Insert slides", lambda page: None))   # step 3 fills build and run
-    host.add_sidebar_box(
-        "course", "Course", lambda deck: _build_box(host, deck), size="compact", when=has_course_link)
+        TAB_TITLE, build_tab,
+        footer_action=FooterAction(
+            "Insert slides", run=lambda page: page.controller.insert(),
+            enabled=lambda page: page.controller.can_insert()))
+    host.add_sidebar_box("course", "Course", build_box, size="compact", when=has_course_link)
 
     # Called on a worker thread: reads the cache, never fetches.
     host.add_render_priority(lambda deck: course_schedule.session_soon(deck_course_url(deck)))
 
-
-def _build_tab(host: Host, deck: Deck) -> Widget:
-    """The Course tab. A placeholder until step 3."""
-    page = host.Page()
-    page.body.addWidget(host.caption(deck_course_url(deck) or "This deck links no course page."))
-    return page
-
-
-def _build_box(host: Host, deck: Deck) -> Widget:
-    """The compact box. A placeholder until step 3."""
-    page = host.Page()
-    page.body.addWidget(host.caption(deck_course_url(deck) or ""))
-    return page

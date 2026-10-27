@@ -10,7 +10,8 @@
 - insert_slides writes ``<root>/slides/<id>-<DE|EN>-<id_suffix>.tex`` (ids T01, T02, … ; the file holds the
   frame as given, without SlideMage's header) and inserts one ``\\slide{<id>-<DE|EN>-<id_suffix>}`` line per
   slide at the position, with its indent and the deck's line ending.
-- Widgets are tiny stand-ins: a Page has a ``body`` with ``addWidget``, a caption keeps its text.
+- Widgets: real PySide6 widgets when PySide6 is installed (a Page is a QWidget with a ``body`` QVBoxLayout and a
+  ``changed`` signal; a Field a labelled QWidget; a caption a QLabel with ``tone``), else tiny stand-ins.
 - Nothing is opened: open_url and open_deck_settings record their arguments.
 """
 from __future__ import annotations
@@ -67,6 +68,27 @@ class FakeWidget:
 
     def setText(self, text: str) -> None:
         self.text = text
+
+
+try:
+    from PySide6.QtCore import Signal
+    from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+except ImportError:     # the Check workflow has no PySide6: the stand-ins above do
+    QWidget = None
+else:
+    class QtPage(QWidget):
+        """Like SlideMage's Page: ``body`` is the layout to add to; ``changed`` has no arguments."""
+        changed = Signal()
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.body = QVBoxLayout(self)
+            self.body.setContentsMargins(0, 0, 0, 0)
+
+    class QtCaption(QLabel):
+        def __init__(self, text: str, tone: str) -> None:
+            super().__init__(text)
+            self.tone = tone
 
 
 class FakeHost:
@@ -219,13 +241,18 @@ class FakeHost:
 
     # -- Host: widgets ------------------------------------------------------------------------------------------
 
-    def Page(self) -> FakeWidget:
-        return FakeWidget()
+    def Page(self) -> Any:
+        return FakeWidget() if QWidget is None else QtPage()
 
-    def Field(self, label: str, widget: Any) -> FakeWidget:
-        field_ = FakeWidget(label)
-        field_.addWidget(widget)
+    def Field(self, label: str, widget: Any) -> Any:
+        if QWidget is None:
+            field_ = FakeWidget(label)
+            field_.addWidget(widget)
+            return field_
+        field_ = QtPage()
+        field_.body.addWidget(QLabel(label))
+        field_.body.addWidget(widget)
         return field_
 
-    def caption(self, text: str, tone: str = "") -> FakeWidget:
-        return FakeWidget(text, tone)
+    def caption(self, text: str, tone: str = "") -> Any:
+        return FakeWidget(text, tone) if QWidget is None else QtCaption(text, tone)
