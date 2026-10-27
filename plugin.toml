@@ -1,0 +1,11 @@
+id = "campusonline"
+name = "CampusOnline"
+version = "1.0.0"
+api_version = 1
+requires_slidemage = ">=9.0"
+summary = "Course links, admin slides and session-aware rendering for CAMPUSonline courses."
+author = "Jürgen Fleiß"
+homepage = "https://github.com/JuergenFleiss/slidemage-plugin-campusonline"
+license = "GPL-3.0-or-later"
+needs = ["A CAMPUSonline course page"]
+network = ["The CAMPUSonline server of the linked course"]
