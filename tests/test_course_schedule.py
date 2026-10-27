@@ -349,3 +349,64 @@ def test_without_a_cache_folder_nothing_is_kept_and_no_course_is_soon(tmp_path):
     sessions = (CourseSession("20.10.2026", "10:00", "11:30", "", "", ""),)
     course_schedule.remember_schedule(SOON_URL, CourseSchedule((CourseGroup("G", sessions),)))
     assert course_schedule.session_soon(SOON_URL, today=date(2026, 10, 18)) is False
+
+
+def test_remember_schedule_keeps_distinct_sessions_sorted_and_the_dates_as_before(cache_folder):
+    def session(day, start, end, location):
+        return CourseSession(day, start, end, location, "Abhaltung", "remark ignored")
+
+    schedule = CourseSchedule((
+        CourseGroup("Standardgruppe", (session("12.10.2026", "09:00", "10:00", "HS 01"),)),
+        CourseGroup("Gruppe A", (
+            session("05.10.2026", "14:00", "15:00", "SR 1"),
+            session("12.10.2026", "09:00", "10:00", "HS 01"),       # the same session again: kept once
+            session("05.10.2026", "09:00", "10:00", "SR 2"),
+        )),
+    ))
+    course_schedule.remember_schedule(SOON_URL, schedule)
+    entry = course_schedule.cached_entry(SOON_URL)
+    assert entry["dates"] == ["05.10.2026", "12.10.2026"]
+    assert entry["sessions"] == [
+        {"date": "05.10.2026", "start": "09:00", "end": "10:00", "location": "SR 2"},
+        {"date": "05.10.2026", "start": "14:00", "end": "15:00", "location": "SR 1"},
+        {"date": "12.10.2026", "start": "09:00", "end": "10:00", "location": "HS 01"},
+    ]
+    assert set(entry) == {"fetched", "dates", "sessions"}
+
+
+def test_a_title_is_kept_across_a_later_remember_schedule(cache_folder):
+    course_schedule.remember_title(SOON_URL, "Management Science")
+    sessions = (CourseSession("20.10.2026", "10:00", "11:30", "", "", ""),)
+    course_schedule.remember_schedule(SOON_URL, CourseSchedule((CourseGroup("G", sessions),)))
+    entry = course_schedule.cached_entry(SOON_URL)
+    assert entry["title"] == "Management Science" and entry["dates"] == ["20.10.2026"]
+    assert course_schedule.session_soon(SOON_URL, today=date(2026, 10, 18)) is True
+
+
+def test_remember_title_creates_updates_and_ignores_empty_titles(cache_folder):
+    course_schedule.remember_title(SOON_URL, "  Bachelorkurs  ")
+    assert course_schedule.cached_entry(SOON_URL) == {"title": "Bachelorkurs"}
+    course_schedule.remember_title(SOON_URL, "Neuer Titel")
+    assert course_schedule.cached_entry(SOON_URL) == {"title": "Neuer Titel"}
+    course_schedule.remember_title(SOON_URL, "   ")
+    course_schedule.remember_title(SOON_URL, "")
+    assert course_schedule.cached_entry(SOON_URL) == {"title": "Neuer Titel"}
+
+
+def test_remember_title_without_a_cache_folder_keeps_nothing(tmp_path):
+    course_schedule.remember_title(SOON_URL, "Bachelorkurs")
+    assert course_schedule.cached_entry(SOON_URL) == {}
+    assert not any(tmp_path.iterdir())
+
+
+def test_cached_entry_is_empty_for_missing_unreadable_or_non_course_urls(cache_folder):
+    assert course_schedule.cached_entry(SOON_URL) == {}                      # no cache file yet
+    cache_folder.mkdir(parents=True)
+    (cache_folder / "course-schedules.json").write_text("{broken", encoding="utf-8")
+    assert course_schedule.cached_entry(SOON_URL) == {}
+    (cache_folder / "course-schedules.json").write_text('["not", "an", "object"]', encoding="utf-8")
+    assert course_schedule.cached_entry(SOON_URL) == {}
+    (cache_folder / "course-schedules.json").write_text('{"12345": "not an entry"}', encoding="utf-8")
+    assert course_schedule.cached_entry(SOON_URL) == {}
+    assert course_schedule.cached_entry("not a course url") == {}
+    assert course_schedule.cached_entry(None) == {}

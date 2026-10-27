@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
@@ -163,22 +163,72 @@ def _cache_file() -> Optional[Path]:
     return None if _cache_folder is None else _cache_folder / _CACHE_FILE_NAME
 
 
-def remember_schedule(course_url: str, schedule: CourseSchedule) -> None:
-    """Keep the session dates of `schedule` for session_soon(). Best-effort: a failure here is not the caller's."""
+def _read_cache(path: Path) -> dict:
+    """The whole cache file as a dict: ``{}`` when it is missing, unreadable or not a JSON object."""
+    try:
+        known = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return known if isinstance(known, dict) else {}
+
+
+def _update_entry(course_url: str, change: Callable[[dict], dict]) -> None:
+    """Store `change(entry)` as the course's entry in the cache, where `entry` is its current entry (or ``{}``).
+    Best-effort: a failure here is not the caller's."""
     try:
         path = _cache_file()
         if path is None:
             return
-        try:
-            known = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            known = {}
-        dates = sorted({s.date for group in schedule.groups for s in group.sessions})
-        known[_course_number(course_url)] = {"fetched": datetime.now().isoformat(timespec="seconds"), "dates": dates}
+        known = _read_cache(path)
+        number = _course_number(course_url)
+        entry = known.get(number)
+        known[number] = change(dict(entry) if isinstance(entry, dict) else {})
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(known), encoding="utf-8")
     except Exception:  # noqa: BLE001
         pass
+
+
+def _sort_day(text: str) -> date:
+    """A session's date for sorting; one the server sent in another format sorts last instead of raising."""
+    try:
+        return datetime.strptime(text, "%d.%m.%Y").date()
+    except (TypeError, ValueError):
+        return date.max
+
+
+def remember_schedule(course_url: str, schedule: CourseSchedule) -> None:
+    """Keep the session dates and the sessions of `schedule` for session_soon() and the Course box. A title
+    already kept for the course stays. Best-effort: a failure here is not the caller's."""
+    dates = sorted({s.date for group in schedule.groups for s in group.sessions})
+    found = {(s.date, s.start, s.end, s.location) for group in schedule.groups for s in group.sessions}
+    sessions = [
+        {"date": day, "start": start, "end": end, "location": location}
+        for day, start, end, location in sorted(found, key=lambda item: (_sort_day(item[0]), *item))
+    ]
+    fetched = datetime.now().isoformat(timespec="seconds")
+    _update_entry(course_url, lambda entry: {**entry, "fetched": fetched, "dates": dates, "sessions": sessions})
+
+
+def remember_title(course_url: str, title: str) -> None:
+    """Keep the course's `title` for the Course box, creating the entry if there is none. An empty title is not
+    kept. Best-effort, like remember_schedule()."""
+    if not isinstance(title, str) or not title.strip():
+        return
+    _update_entry(course_url, lambda entry: {**entry, "title": title.strip()})
+
+
+def cached_entry(course_url: str | None) -> dict:
+    """The cache's entry for the course: ``{}`` when there is none, no cache folder is set, the cache cannot be
+    read or `course_url` is not a course URL. Never raises and never fetches."""
+    try:
+        path = _cache_file()
+        if path is None:
+            return {}
+        entry = _read_cache(path).get(_course_number(course_url))
+    except Exception:  # noqa: BLE001
+        return {}
+    return entry if isinstance(entry, dict) else {}
 
 
 def adopt_legacy_cache(legacy_folder: Path | None) -> bool:

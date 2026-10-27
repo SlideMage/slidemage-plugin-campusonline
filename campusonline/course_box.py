@@ -2,15 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """What the compact Course box says, worked out from the cached schedule alone (no Qt, no network).
 
-The cache (``course_schedule.remember_schedule``) holds, per course number, when it was fetched and the session
-dates as ``dd.mm.yyyy``. It has no course title, times or rooms yet, so the box shows what is there: the course
-page's host and number instead of a title, and the next session's date. An entry that also carries ``title``
-and ``sessions`` (a list of ``{date, start, end, location}``) is shown in full; once course_schedule.py caches
-those, the box needs no change.
+The cache (``course_schedule.remember_schedule`` and ``remember_title``) holds, per course number, the title and
+the sessions (``{date, start, end, location}``) of the course. Where a title is not cached the box shows the
+course page's host and number instead, and where the sessions are not cached only the session dates it has.
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import date, datetime
 from urllib.parse import parse_qs, urlsplit
@@ -33,14 +30,7 @@ class BoxLines:
 
 def cached_entry(course_url: str) -> dict:
     """The cache's entry for the course, ``{}`` when there is none or the cache cannot be read."""
-    path = course_schedule._cache_file()
-    if path is None:
-        return {}
-    try:
-        entry = json.loads(path.read_text(encoding="utf-8")).get(course_schedule._course_number(course_url), {})
-    except Exception:  # noqa: BLE001 -- no cache, a course url that is not one: nothing cached
-        return {}
-    return entry if isinstance(entry, dict) else {}
+    return course_schedule.cached_entry(course_url)
 
 
 def course_label(course_url: str) -> str:

@@ -65,6 +65,19 @@ def test_cached_entry_reads_the_plugin_cache(tmp_path):
         course_schedule.use_cache_folder(None)
 
 
+def test_box_shows_the_title_and_sessions_the_plugin_stored(tmp_path):
+    course_schedule.use_cache_folder(tmp_path)
+    try:
+        course_schedule.remember_title(URL, "Management Science")
+        sessions = (course_schedule.CourseSession("12.10.2026", "09:00", "10:30", "HS 01", "Abhaltung", ""),)
+        course_schedule.remember_schedule(URL, course_schedule.CourseSchedule((course_schedule.CourseGroup("G", sessions),)))
+        lines = course_box.box_lines(URL, course_box.cached_entry(URL), TODAY)
+        assert lines.title == "Management Science"
+        assert lines.next_session == "Next session: Mon 12.10.2026, 09:00–10:30, HS 01"
+    finally:
+        course_schedule.use_cache_folder(None)
+
+
 def labels(page):
     pytest.importorskip("PySide6")
     return [w.text() for w in page.findChildren(_qlabel())]

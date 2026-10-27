@@ -30,6 +30,8 @@ def fetch(url: str, language: str) -> tuple[object, object]:
         detail: object = course_schedule.fetch_course_detail(url, language)
     except Exception as exc:  # noqa: BLE001
         detail = str(exc)
+    else:
+        course_schedule.remember_title(url, detail.title)     # for the Course box
     return schedule, detail
 
 

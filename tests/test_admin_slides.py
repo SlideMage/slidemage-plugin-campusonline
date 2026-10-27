@@ -65,3 +65,36 @@ def test_the_two_parts_of_a_fetch_fail_independently(monkeypatch):
     monkeypatch.setattr(course_schedule, "fetch_schedule", broken_schedule)
     monkeypatch.setattr(course_schedule, "fetch_course_detail", lambda url, language: DETAIL)
     assert admin_slides.fetch("https://example.invalid", "de") == ("network unreachable", DETAIL)
+
+
+COURSE = "https://online.uni-graz.at/kfu_online/wbLv.wbShowLVDetail?pStpSpNr=1002516"
+
+
+@pytest.fixture
+def cache_folder(tmp_path):
+    course_schedule.use_cache_folder(tmp_path / "cache")
+    yield tmp_path / "cache"
+    course_schedule.use_cache_folder(None)
+
+
+def test_fetch_keeps_the_title_for_the_course_box(cache_folder, monkeypatch):
+    schedule = course_schedule.CourseSchedule((GROUP,))
+    monkeypatch.setattr(course_schedule, "fetch_schedule", lambda url: schedule)
+    monkeypatch.setattr(course_schedule, "fetch_course_detail", lambda url, language: DETAIL)
+    assert admin_slides.fetch(COURSE, "de") == (schedule, DETAIL)
+    entry = course_schedule.cached_entry(COURSE)
+    assert entry["title"] == DETAIL.title
+
+
+def test_fetch_keeps_no_title_when_the_detail_fails_or_has_none(cache_folder, monkeypatch):
+    monkeypatch.setattr(course_schedule, "fetch_schedule", lambda url: course_schedule.CourseSchedule(()))
+    def unavailable(url, language):
+        raise RuntimeError("course data unavailable")
+
+    monkeypatch.setattr(course_schedule, "fetch_course_detail", unavailable)
+    admin_slides.fetch(COURSE, "de")
+    assert "title" not in course_schedule.cached_entry(COURSE)
+
+    monkeypatch.setattr(course_schedule, "fetch_course_detail", lambda url, language: replace(DETAIL, title=" "))
+    admin_slides.fetch(COURSE, "de")
+    assert "title" not in course_schedule.cached_entry(COURSE)
