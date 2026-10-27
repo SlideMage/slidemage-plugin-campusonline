@@ -4,7 +4,7 @@
 course the deck links and choose which admin slides to generate -- a title slide naming some of the
 lecturers, and the sessions table of one group -- and where in the deck they go.
 
-The fetching, the slide sources and the insertion are admin_slides'. The course is fetched once, on
+The fetching and the slides' frames are admin_slides', the insertion insert's. The course is fetched once, on
 a thread, when the tab is first shown; its two parts (schedule and course detail) can fail
 independently, and a part that is not available leaves its section disabled. `slide_specs` is what
 Insert slides will create, `position` where it goes.
@@ -14,11 +14,13 @@ from __future__ import annotations
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QCheckBox, QComboBox, QPlainTextEdit, QVBoxLayout
 
-from ... import admin_slides, course_schedule, deck_editor
-from ...deck_scan import Deck
-from ...transcript import deck_language_of
-from .. import background
-from ..kit.widgets import Field, Page, caption
+from slidemage import deck_editor
+from slidemage.deck_scan import Deck
+from slidemage.transcript import deck_language_of
+from slidemage.ui import background
+from slidemage.ui.kit.widgets import Field, Page, caption
+
+from campusonline import admin_slides, course_schedule
 
 
 class _Fetcher(QThread):

@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from io import BytesIO
 
 import pytest
 
-from slidemage.course_schedule import (
+from campusonline import course_schedule
+from campusonline.course_schedule import (
     CourseDetail,
     CourseGroup,
     CourseSchedule,
@@ -207,7 +209,7 @@ def test_fetch_rejects_redirect_to_another_host(monkeypatch):
         def __exit__(self, *args):
             self.close()
 
-    monkeypatch.setattr("slidemage.course_schedule.urlopen", lambda request, timeout: Response(GROUPS_JSON))
+    monkeypatch.setattr("campusonline.course_schedule.urlopen", lambda request, timeout: Response(GROUPS_JSON))
     with pytest.raises(RuntimeError, match="redirected"):
         fetch_schedule(COURSE_URL)
 
@@ -285,7 +287,7 @@ def test_fetch_uses_the_course_endpoint_and_german_json(monkeypatch, fetch, sour
                           request.get_header("Accept-language"), timeout))
         return Response(source)
 
-    monkeypatch.setattr("slidemage.course_schedule.urlopen", fake_urlopen)
+    monkeypatch.setattr("campusonline.course_schedule.urlopen", fake_urlopen)
     result = fetch(COURSE_URL)
     assert requested == [(url, "application/json", "de", 15)]
     name = result.groups[0].name if isinstance(result, CourseSchedule) else result.title
@@ -321,3 +323,29 @@ def test_parse_course_detail_reads_languages_of_instruction_main_first():
         {"languageDto": None},
     ]
     assert parse_course_detail(json.dumps(payload)).languages == ("de", "en")
+
+
+SOON_URL = "https://online.uni-graz.at/kfu_online/pl/ui/$ctx/wbLv.wbShowLVDetail?pStpSpNr=12345"
+
+
+@pytest.fixture
+def cache_folder(tmp_path):
+    course_schedule.use_cache_folder(tmp_path / "cache")
+    yield tmp_path / "cache"
+    course_schedule.use_cache_folder(None)
+
+
+def test_the_course_schedule_is_only_read_from_the_copy_kept_when_it_was_fetched(cache_folder):
+    assert course_schedule.session_soon(SOON_URL) is False                             # nothing fetched yet: no boost, no network
+    sessions = tuple(CourseSession(d, "10:00", "11:30", "", "", "") for d in ("20.10.2026", "01.12.2026"))
+    course_schedule.remember_schedule(SOON_URL, CourseSchedule((CourseGroup("G", sessions),)))
+    assert (cache_folder / "course-schedules.json").is_file()
+    assert course_schedule.session_soon(SOON_URL, today=date(2026, 10, 18)) is True        # in two days
+    assert course_schedule.session_soon(SOON_URL, today=date(2026, 10, 22)) is False       # the next is six weeks away
+    assert course_schedule.session_soon(None) is False and course_schedule.session_soon("not a url") is False
+
+
+def test_without_a_cache_folder_nothing_is_kept_and_no_course_is_soon(tmp_path):
+    sessions = (CourseSession("20.10.2026", "10:00", "11:30", "", "", ""),)
+    course_schedule.remember_schedule(SOON_URL, CourseSchedule((CourseGroup("G", sessions),)))
+    assert course_schedule.session_soon(SOON_URL, today=date(2026, 10, 18)) is False

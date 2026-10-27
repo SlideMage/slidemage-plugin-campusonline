@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 import json
+from pathlib import Path
 import re
 from typing import Optional, Union
 from urllib.error import HTTPError, URLError
@@ -140,19 +141,30 @@ def fetch_schedule(course_url: str) -> CourseSchedule:
 
 
 # -- the copy kept for background rendering ------------------------------------------------
-# Background rendering prepares the decks of courses that meet soon first (background_renders.py). It must
-# never go to the network by itself, so it reads the session dates of the last schedule this computer fetched
-# (the course dialogs do), kept in the user's cache folder.
+# SlideMage's background rendering prepares the decks of courses that meet soon first. It must never go to the
+# network by itself, so it reads the session dates of the last schedule this computer fetched (the Course tab
+# does), kept in the plugin's cache folder. Until use_cache_folder() names that folder nothing is kept and no
+# course is soon.
 
-def _cache_file():
-    from . import project
-    return project.cache_dir() / "course-schedules.json"
+_cache_folder: Optional[Path] = None
+
+
+def use_cache_folder(folder: Optional[Path]) -> None:
+    """Keep the fetched session dates in `folder` from now on (None: keep none)."""
+    global _cache_folder
+    _cache_folder = folder
+
+
+def _cache_file() -> Optional[Path]:
+    return None if _cache_folder is None else _cache_folder / "course-schedules.json"
 
 
 def remember_schedule(course_url: str, schedule: CourseSchedule) -> None:
     """Keep the session dates of `schedule` for session_soon(). Best-effort: a failure here is not the caller's."""
     try:
         path = _cache_file()
+        if path is None:
+            return
         try:
             known = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -168,10 +180,11 @@ def remember_schedule(course_url: str, schedule: CourseSchedule) -> None:
 def session_soon(course_url: Optional[str], *, days: int = 7, today: Optional[date] = None) -> bool:
     """Whether the cached schedule of the course has a session today or within `days` days. False without a
     cached schedule or for an unknown course: this never fetches anything."""
-    if not course_url:
+    path = _cache_file()
+    if not course_url or path is None:
         return False
     try:
-        known = json.loads(_cache_file().read_text(encoding="utf-8"))
+        known = json.loads(path.read_text(encoding="utf-8"))
         dates = known.get(_course_number(course_url), {}).get("dates", [])
         today = today or date.today()
         for text in dates:
@@ -307,7 +320,7 @@ def _escape_latex(text: str) -> str:
 
 
 # The slide's own wording per deck language ("de"/"en", as
-# transcript.deck_language_of() reports it). The course system serves the
+# SlideMage's transcript.deck_language_of() reports it). The course system serves the
 # schedule in German; an English deck gets its table translated by
 # translate_to_english() below (v4.1.0, direct instruction).
 LABELS = {

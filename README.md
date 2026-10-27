@@ -29,6 +29,14 @@ workflow runs it on every push.
 `python build.py` checks and then builds `dist/campusonline-<version>.smplugin` (a zip of `plugin.toml`,
 `LICENSE` and the package) and its `.sha256`.
 
+`python -m pytest` runs the tests; the Check workflow runs them too. The plugin package itself needs nothing
+but the standard library, so most tests run anywhere.
+
+`bridge/` holds what the plugin still does through SlideMage's internals until SlideMage's plugin API offers it:
+making slide files and adding them to a deck, writing the course link, and the Admin slides tab. It is not part
+of the plugin, and its tests (`tests/bridge/`) run only where SlideMage can be imported, for example with
+SlideMage's own environment: `../SlideMage/.venv/bin/python -m pytest`.
+
 `docs/UGO_api.md` describes the CAMPUSonline endpoints the plugin uses and how they were found.
 
 ### Releasing a version

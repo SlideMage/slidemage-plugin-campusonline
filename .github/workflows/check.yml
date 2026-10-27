@@ -13,3 +13,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: python build.py --check
+      - run: pip install pytest
+      # Without SlideMage: tests/bridge/ is skipped.
+      - run: python -m pytest -q

@@ -8,10 +8,11 @@ from dataclasses import replace
 
 import pytest
 
-from slidemage import admin_slides
-from slidemage.course_schedule import CourseGroup, CourseSchedule, CourseSession
-from slidemage.ui.dialogs.admin_slides import AdminSlidesTab
-from test_admin_slides import DETAIL, GROUP, make_deck
+from campusonline import admin_slides
+from campusonline.course_schedule import CourseGroup, CourseSchedule, CourseSession
+from bridge.deck_tab import AdminSlidesTab
+from test_admin_slides import DETAIL, GROUP
+from test_insert import make_deck
 
 
 def make_tab(tmp_path, monkeypatch, language="de", fetch_result=("", ""), **deck_fields):
