@@ -19,15 +19,15 @@ Each step is one commit (or a few); work pauses after each one for review.
 
 | | Step | Status |
 |---|---|---|
-| 0a | History: the 13 paths of the feature (today's and earlier file names) filtered out of `stpalan/SlideMage` `develop` with git-filter-repo | done, `c9d719a` and before |
-| 0b | Files moved into the plugin layout | done, `d1ef509` |
-| 0c | The [plugin template](https://github.com/stpalan/slidemage-plugin-template) adopted: `plugin.toml`, `build.py`, Check and Release workflows, README, CHANGELOG | done, `14b57ec` |
-| 1 | The package needs only the standard library; what needs SlideMage's internals is in `bridge/`; Check runs the tests | done, `b7c891e` |
-| 2 | The host interface, drafted | done, `9d5a6b9` |
-| 3 | The Course tab and the box | done, `df91066`; the box's title and sessions cached since `6922913` |
-| 4 | Moving over the old schedule cache | done, `3d22a40` (`adopt_legacy_cache`, called in `activate()` with `host.legacy_cache_dir()`) |
+| 0a | History: the 13 paths of the feature (today's and earlier file names) filtered out of `stpalan/SlideMage` `develop` with git-filter-repo | done, `0000000` and before |
+| 0b | Files moved into the plugin layout | done, `c37e1c8` |
+| 0c | The [plugin template](https://github.com/stpalan/slidemage-plugin-template) adopted: `plugin.toml`, `build.py`, Check and Release workflows, README, CHANGELOG | done, `23660d5` |
+| 1 | The package needs only the standard library; what needs SlideMage's internals is in `bridge/`; Check runs the tests | done, `896f041` |
+| 2 | The host interface, drafted | done, `100cabc` |
+| 3 | The Course tab and the box | done, `1f2c2ed`; the box's title and sessions cached since `0fc20d5` |
+| 4 | Moving over the old schedule cache | done, `063bd61` (`adopt_legacy_cache`, called in `activate()` with `host.legacy_cache_dir()`) |
 | 5 | The real `slidemage.plugin_api` | done (against SlideMage's `feature/plugin-host`; see step 5) |
-| 6 | The public repository and 1.0.0 | next; waits for the repository in the `SlideMage` organisation |
+| 6 | The public repository and 1.0.0 | repository created: `SlideMage/slidemage-plugin-campusonline` (`main`, `develop`); 1.0.0 next |
 
 ### 2. The host interface, drafted
 
@@ -131,7 +131,8 @@ tests against the oldest and newest allowed SlideMage (only one API version, 1, 
 The catalogue lists only a public repository registered in `stpalan/slidemage-website`
 `registry/plugins.toml`, named `slidemage-plugin-<id>` by convention. So:
 
-- create `JuergenFleiss/slidemage-plugin-campusonline` (public, issues open) and push this branch to its `main`;
+- create `SlideMage/slidemage-plugin-campusonline` (public, issues open) and push this branch to its `main`
+  and `develop` (done, 2026-10-28; the history was rewritten first to replace a real name in old test fixtures);
 - replace `website/icon.svg` (still the template's), add screenshots in `website/screenshots/`;
 - date the 1.0.0 entry in `CHANGELOG.md`, tag `v1.0.0`; the Release workflow publishes the asset;
 - a pull request to `registry/plugins.toml` (`releases = ["1.0.0"]`);
@@ -146,7 +147,7 @@ copies don't drift.
 
 For Jürgen (from Stefan's handover):
 
-- Repository name and owner: `JuergenFleiss/slidemage-plugin-campusonline`?
+- Repository name and owner: `SlideMage/slidemage-plugin-campusonline`, in the organisation (decided 2026-10-28).
 - A Settings tab: anything to put there (a default CAMPUSonline instance, a cache time)? Today there is nothing
   that needs one.
 - The box: anything else worth showing at a glance (lecturers, the group of the next session, the course
