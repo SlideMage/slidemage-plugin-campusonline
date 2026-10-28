@@ -112,13 +112,14 @@ class Host(Protocol):
         With a ``footer_action`` the footer shows that button while the tab is selected."""
 
     def add_sidebar_box(
-        self, key: str, title: str, build: Callable[[Deck], Widget], size: Literal["compact", "full"] = "compact",
+        self, key: str, title: str, build: Callable[[Deck], Widget], size: Literal["compact", "large"] = "compact",
         when: Callable[[Deck], bool] = lambda deck: True,
     ) -> None:
         """Add a box to the workspace's right column. ``key`` is unique within the plugin (it remembers the box's
         collapsed state). ``build(deck)`` is called when the box is shown for a deck, and again when the current
         deck changes or its file does; ``when(deck)`` decides whether the box is shown at all, cheap and without
-        the network. ``"compact"`` is a few lines at a glance, ``"full"`` may scroll."""
+        the network. ``"compact"`` is a few lines at a glance (an entry of the panel picker); ``"large"`` is a
+        working surface in the dock below the slide panels, and may scroll."""
 
     def add_render_priority(self, soon: Callable[[Deck], bool]) -> None:
         """Give a deck priority in the background renders when ``soon(deck)`` is true: it is rendered earlier
