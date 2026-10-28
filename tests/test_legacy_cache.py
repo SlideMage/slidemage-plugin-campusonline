@@ -56,11 +56,12 @@ def test_returns_false_when_there_is_nothing_to_adopt(case, plugin_folder, legac
     assert not (plugin_folder / "course-schedules.json").exists()
 
 
-def test_invalid_json_is_not_adopted_and_leaves_no_file(plugin_folder, legacy_folder):
-    (legacy_folder / "course-schedules.json").write_text("{not json", encoding="utf-8")
+@pytest.mark.parametrize("text", ["{not json", '["not", "an", "object"]'])
+def test_invalid_json_is_not_adopted_and_leaves_no_file(plugin_folder, legacy_folder, text):
+    (legacy_folder / "course-schedules.json").write_text(text, encoding="utf-8")
     assert course_schedule.adopt_legacy_cache(legacy_folder) is False
     assert not (plugin_folder / "course-schedules.json").exists()
-    assert list(plugin_folder.iterdir()) == []
+    assert not plugin_folder.exists() or list(plugin_folder.iterdir()) == []
 
 
 def test_creates_the_plugin_cache_folder_when_missing(plugin_folder, legacy_folder):

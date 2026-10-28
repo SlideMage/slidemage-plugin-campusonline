@@ -10,14 +10,17 @@ what else they return.
 """
 from __future__ import annotations
 
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import date, datetime
+import errno
 import json
 import os
 from pathlib import Path
 import re
-import shutil
+import tempfile
+import threading
+import time
 from typing import Callable, Optional, Union
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
@@ -156,13 +159,17 @@ def fetch_schedule(course_url: str) -> CourseSchedule:
 _CACHE_FILE_NAME = "course-schedules.json"
 _cache_folder: Optional[Path] = None
 _known_installations: set[str] = set()
+_installations_lock = threading.Lock()
+_cache_lock = threading.Lock()
+_CACHE_LOCK_TIMEOUT = 2.0
 
 
 def use_cache_folder(folder: Optional[Path]) -> None:
     """Keep the fetched session dates in `folder` from now on (None: keep none)."""
     global _cache_folder
-    _cache_folder = folder
-    _known_installations.clear()
+    with _installations_lock:
+        _cache_folder = folder
+        _known_installations.clear()
 
 
 def _cache_file() -> Optional[Path]:
@@ -187,15 +194,87 @@ def _entry_for(known: dict, course_url: str) -> tuple[str, dict, bool]:
     """
     base, number, _host = _course_parts(course_url)
     key = _cache_key(course_url)
-    _known_installations.add(base)
-    for existing_key in known:
-        try:
-            _known_installations.add(_course_parts(existing_key)[0])
-        except ValueError:
-            continue
-    legacy = key not in known and _known_installations == {base} and isinstance(known.get(number), dict)
+    with _installations_lock:
+        _known_installations.add(base)
+        for existing_key in known:
+            try:
+                _known_installations.add(_course_parts(existing_key)[0])
+            except ValueError:
+                continue
+        legacy = key not in known and _known_installations == {base} and isinstance(known.get(number), dict)
     entry = known.get(number) if legacy else known.get(key)
     return key, entry if isinstance(entry, dict) else {}, legacy
+
+
+@contextmanager
+def _cache_write_lock(path: Path):
+    """Serialize the entire read/modify/publish across threads and application processes.
+
+    Lock a separate, persistent file: replacing the JSON must not replace the inode being locked. Both
+    lock acquisitions share a bounded timeout; callers treat lock failures like any other cache failure.
+    Readers need no file lock because publication is atomic.
+    """
+    deadline = time.monotonic() + _CACHE_LOCK_TIMEOUT
+    if not _cache_lock.acquire(timeout=_CACHE_LOCK_TIMEOUT):
+        raise TimeoutError("Course cache is busy")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.with_name(path.name + ".lock").open("a+b") as lock_file:
+            if os.name == "nt":
+                import msvcrt
+
+                if os.fstat(lock_file.fileno()).st_size == 0:
+                    lock_file.write(b"\0")
+                    lock_file.flush()
+
+                def lock():
+                    lock_file.seek(0)
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+
+                def unlock():
+                    lock_file.seek(0)
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                def lock():
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+                def unlock():
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+            while True:
+                try:
+                    lock()
+                    break
+                except OSError as exc:
+                    if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                        raise
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise TimeoutError("Course cache is busy") from exc
+                    time.sleep(min(0.02, remaining))
+            try:
+                yield
+            finally:
+                unlock()
+    finally:
+        _cache_lock.release()
+
+
+def _write_cache(path: Path, text: str) -> None:
+    """Publish a complete file in one replacement; the caller holds _cache_write_lock()."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=f".{path.name}.", suffix=".tmp", delete=False) as output:
+            temporary = Path(output.name)
+            output.write(text)
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            with suppress(OSError):
+                temporary.unlink(missing_ok=True)
 
 
 def _update_entry(course_url: str, change: Callable[[dict], dict]) -> None:
@@ -205,13 +284,13 @@ def _update_entry(course_url: str, change: Callable[[dict], dict]) -> None:
         path = _cache_file()
         if path is None:
             return
-        known = _read_cache(path)
-        key, entry, legacy = _entry_for(known, course_url)
-        known[key] = change(dict(entry))
-        if legacy:
-            del known[_course_parts(course_url)[1]]
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(known), encoding="utf-8")
+        with _cache_write_lock(path):
+            known = _read_cache(path)
+            key, entry, legacy = _entry_for(known, course_url)
+            known[key] = change(dict(entry))
+            if legacy:
+                del known[_course_parts(course_url)[1]]
+            _write_cache(path, json.dumps(known))
     except Exception:  # noqa: BLE001
         pass
 
@@ -266,21 +345,21 @@ def adopt_legacy_cache(legacy_folder: Path | None) -> bool:
     check to adopted entries, and the next write migrates an unambiguous entry to its full key.
     Local files only, and cheap."""
     path = _cache_file()
-    if path is None or legacy_folder is None or path.exists():
+    if path is None or legacy_folder is None:
         return False
     source = Path(legacy_folder) / _CACHE_FILE_NAME
     if not source.is_file():
         return False
-    temporary = path.with_name(path.name + ".partial")
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, temporary)
-        json.loads(temporary.read_text(encoding="utf-8"))
-        os.replace(temporary, path)
-        return True
-    except (OSError, ValueError):
-        with suppress(OSError):
-            temporary.unlink(missing_ok=True)
+        text = source.read_text(encoding="utf-8")
+        if not isinstance(json.loads(text), dict):
+            return False
+        with _cache_write_lock(path):
+            if path.exists():
+                return False
+            _write_cache(path, text)
+            return True
+    except Exception:  # noqa: BLE001 -- adoption is best-effort, like the other cache writes
         return False
 
 
