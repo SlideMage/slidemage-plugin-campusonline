@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Stefan Palan, Jürgen Fleiß
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""A FakeHost for the plugin's tests: implements campusonline.host.Host without SlideMage or Qt.
+"""A FakeHost for the plugin's tests: implements slidemage.plugin_api.Host without SlideMage or Qt.
 
 - Registrations are recorded (commands, menu entries, deck settings tabs, sidebar boxes, render priorities).
 - run_in_background runs the work at once, on the calling thread, and then calls done.
@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from campusonline.host import FooterAction, InsertPosition, StaleFileError
+from slidemage.plugin_api import FooterAction, InsertPosition, StaleFileError
 
 SLIDE_CALL_RE = re.compile(r"^([ \t]*)\\slide\{([^}]*)\}[ \t]*\r?\n?", re.MULTILINE)
 
@@ -91,6 +91,22 @@ else:
             self.tone = tone
 
 
+class FakeSettings:
+    """slidemage.plugin_api.Settings in memory."""
+
+    def __init__(self) -> None:
+        self.values: dict[str, Any] = {}
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.values.get(key, default)
+
+    def set(self, key: str, value: Any) -> None:
+        self.values[key] = value
+
+    def save(self) -> None:
+        pass
+
+
 class FakeHost:
     def __init__(self, root: Path, legacy_cache: Path | None = None) -> None:
         self.root = root
@@ -102,6 +118,10 @@ class FakeHost:
         self.render_priorities: list[Callable[[Any], bool]] = []
         self.opened_urls: list[str] = []
         self.opened_settings: list[tuple[Any, str | None]] = []
+        self.settings_tabs: list[tuple[str, Callable[[], Any]]] = []
+        self.log_lines: list[str] = []
+        self.messages: list[tuple[str, bool]] = []
+        self._settings = FakeSettings()
         self._ids = 0
         self._active = True
 
@@ -230,6 +250,19 @@ class FakeHost:
         """"en" if the preamble mentions english, else "de"."""
         begin = deck.text.find("\\begin{document}")
         return "en" if "english" in (deck.text if begin < 0 else deck.text[:begin]).lower() else "de"
+
+    def settings(self) -> FakeSettings:
+        return self._settings
+
+    def add_settings_tab(self, title: str, build: Callable[[], Any]) -> None:
+        self._check_active()
+        self.settings_tabs.append((title, build))
+
+    def log(self, message: str) -> None:
+        self.log_lines.append(message)
+
+    def show_message(self, text: str, error: bool = False) -> None:
+        self.messages.append((text, error))
 
     def open_url(self, url: str) -> None:
         if not url.lower().startswith(("http://", "https://")):

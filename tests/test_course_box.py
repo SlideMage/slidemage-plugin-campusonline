@@ -8,6 +8,8 @@ from datetime import date
 
 import pytest
 
+pytest.importorskip("slidemage.plugin_api", reason="SlideMage's plugin API is not installed")
+
 from campusonline import course_box, course_schedule
 from fake_host import FakeHost
 

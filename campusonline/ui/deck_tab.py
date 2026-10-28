@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QHBoxLayout, QLineEdit, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
 from .. import admin_slides, course_link, course_schedule
-from ..host import Deck, Host, InsertPosition, StaleFileError, Widget
+from slidemage.plugin_api import Deck, Host, InsertPosition, StaleFileError, Widget
 
 STALE = "The deck changed on disk; reopen Deck settings."
 NO_LINK = "This deck links no course page. Save one above, then open Admin slides again."

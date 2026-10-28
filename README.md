@@ -30,12 +30,10 @@ workflow runs it on every push.
 `LICENSE` and the package) and its `.sha256`.
 
 `python -m pytest` runs the tests; the Check workflow runs them too. The plugin package itself needs nothing
-but the standard library, so most tests run anywhere.
-
-`bridge/` holds what the plugin still does through SlideMage's internals until SlideMage's plugin API offers it:
-making slide files and adding them to a deck, writing the course link, and the Admin slides tab. It is not part
-of the plugin, and its tests (`tests/bridge/`) run only where SlideMage can be imported, for example with
-SlideMage's own environment: `../SlideMage/.venv/bin/python -m pytest`.
+but the standard library (and `slidemage.plugin_api` and PySide6 once SlideMage runs it), so the pure tests run
+anywhere. The tests that use `slidemage.plugin_api` (the FakeHost ones) are skipped where SlideMage is not
+importable; run them with SlideMage's `src` on the path, for example
+`PYTHONPATH=../SlideMage/src ../SlideMage/.venv/bin/python -m pytest`.
 
 `docs/UGO_api.md` describes the CAMPUSonline endpoints the plugin uses and how they were found.
 

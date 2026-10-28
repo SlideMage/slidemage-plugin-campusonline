@@ -8,9 +8,11 @@ from unittest import mock
 
 import pytest
 
+pytest.importorskip("slidemage.plugin_api", reason="SlideMage's plugin API is not installed")
+
 import campusonline
 from campusonline import course_schedule
-from campusonline.host import Host, StaleFileError
+from slidemage.plugin_api import Host, StaleFileError
 from fake_host import FakeHost
 
 URL = "https://online.uni-graz.at/kfu_online/wbLv.wbShowLVDetail?pStpSpNr=1002516"
@@ -119,3 +121,15 @@ def test_fake_host_edits_refuse_stale_files(tmp_path):
     with pytest.raises(StaleFileError):
         fake.insert_slides(deck, first, [("more", "f")], "de")
     assert not (tmp_path / "slides" / "T02-DE-more.tex").exists()
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_course_link_edit_through_the_host_keeps_line_endings(host, newline):
+    from campusonline.course_link import course_url_text, parse_course_url
+
+    initial = newline.join((r"\documentclass{beamer}", r"\begin{document}", r"\end{document}", ""))
+    deck = host.make_deck("course", initial)
+    linked = host.edit_deck_text(deck, lambda text: course_url_text(text, URL, deck.name))
+    assert deck.path.read_bytes().decode() == linked
+    assert parse_course_url(linked) == URL
+    assert host.edit_deck_text(host.reread(deck), lambda text: course_url_text(text, "  ", deck.name)) == initial

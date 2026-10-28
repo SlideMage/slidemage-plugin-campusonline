@@ -8,6 +8,8 @@ from dataclasses import replace
 
 import pytest
 
+pytest.importorskip("slidemage.plugin_api", reason="SlideMage's plugin API is not installed")
+
 import campusonline
 from campusonline import admin_slides, course_schedule
 from campusonline.course_schedule import CourseGroup, CourseSchedule, CourseSession

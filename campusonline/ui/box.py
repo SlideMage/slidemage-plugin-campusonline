@@ -10,7 +10,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
 from .. import course_box, course_link
-from ..host import Deck, Host, Widget
+from slidemage.plugin_api import Deck, Host, Widget
 
 
 def build_box(host: Host, deck: Deck) -> Widget:

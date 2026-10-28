@@ -26,7 +26,7 @@ Each step is one commit (or a few); work pauses after each one for review.
 | 2 | The host interface, drafted | done, `9d5a6b9` |
 | 3 | The Course tab and the box | done, `df91066`; the box's title and sessions cached since `6922913` |
 | 4 | Moving over the old schedule cache | done, `3d22a40` (`adopt_legacy_cache`, called in `activate()` with `host.legacy_cache_dir()`) |
-| 5 | The real `slidemage.plugin_api` | waits for SlideMage |
+| 5 | The real `slidemage.plugin_api` | done (against SlideMage's `feature/plugin-host`; see step 5) |
 | 6 | The public repository and 1.0.0 | waits for 5 |
 
 ### 2. The host interface, drafted
@@ -115,6 +115,16 @@ When SlideMage has the plugin host (Stefan's phases 0 and 1):
 - move what `bridge/` does onto host calls and delete `bridge/` and `tests/bridge/`;
 - Check: tests against the oldest and newest SlideMage allowed by `requires_slidemage`;
 - set `requires_slidemage` to the first SlideMage with the host.
+
+Done: `campusonline/host.py` is gone; the package imports `Host`, `Deck`, `FooterAction`, `InsertPosition`,
+`StaleFileError`, `COURSE_GROUP` and `Widget` from `slidemage.plugin_api` (`__init__.py` only lazily, so the pure
+modules import without SlideMage). `bridge/` and `tests/bridge/` are deleted: slide files and the course link go
+through `insert_positions`, `insert_slides`, `edit_deck_text` and `deck_language`; one bridge test (CRLF round
+trip of the link) moved into `tests/test_activate.py`. `plugin_api` lacked nothing the plugin uses. `FakeHost`
+implements `plugin_api.Host` structurally (also `settings`, `add_settings_tab`, `log`, `show_message`). Tests that
+need `slidemage.plugin_api` skip when it is not importable. The Check workflow installs SlideMage from
+`feature/plugin-host` (switch to tag `v9.0.0` once released). `requires_slidemage` stays `>=9.0`. Still open:
+tests against the oldest and newest allowed SlideMage (only one API version, 1, exists).
 
 ### 6. The public repository and 1.0.0
 

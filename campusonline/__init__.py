@@ -6,8 +6,12 @@ data, and earlier background renders for a deck whose course has a session soon.
 SlideMage imports this package and calls activate() once at start."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from . import course_link, course_schedule
-from .host import COURSE_GROUP, Deck, FooterAction, Host, Widget
+
+if TYPE_CHECKING:    # slidemage.plugin_api is imported where it is used, so that the pure modules import without SlideMage
+    from slidemage.plugin_api import Deck, Host, Widget
 
 COMMAND_ADMIN_SLIDES = "campusonline.admin_slides"
 COMMAND_OPEN_COURSE_PAGE = "campusonline.open_course_page"
@@ -24,6 +28,7 @@ def has_course_link(deck: Deck | None) -> bool:
 
 
 def in_course_group(deck: Deck | None) -> bool:
+    from slidemage.plugin_api import COURSE_GROUP
     return deck is not None and COURSE_GROUP in deck.groups
 
 
@@ -33,9 +38,11 @@ def course_commands_possible(deck: Deck | None) -> bool:
 
 
 def activate(host: Host) -> None:
-    """Register the plugin's contributions with SlideMage through host (see campusonline.host).
+    """Register the plugin's contributions with SlideMage through host (see slidemage.plugin_api).
 
     Runs at start: it registers and sets a folder, and does no network or slow work."""
+    from slidemage.plugin_api import FooterAction
+
     course_schedule.use_cache_folder(host.cache_dir())
     course_schedule.adopt_legacy_cache(host.legacy_cache_dir())     # once: SlideMage kept the dates before the plugin
 
