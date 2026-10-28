@@ -27,7 +27,7 @@ Each step is one commit (or a few); work pauses after each one for review.
 | 3 | The Course tab and the box | done, `df91066`; the box's title and sessions cached since `6922913` |
 | 4 | Moving over the old schedule cache | done, `3d22a40` (`adopt_legacy_cache`, called in `activate()` with `host.legacy_cache_dir()`) |
 | 5 | The real `slidemage.plugin_api` | done (against SlideMage's `feature/plugin-host`; see step 5) |
-| 6 | The public repository and 1.0.0 | waits for 5 |
+| 6 | The public repository and 1.0.0 | next; waits for the repository in the `SlideMage` organisation |
 
 ### 2. The host interface, drafted
 
