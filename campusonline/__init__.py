@@ -16,6 +16,7 @@ if TYPE_CHECKING:    # slidemage.plugin_api is imported where it is used, so tha
 COMMAND_ADMIN_SLIDES = "campusonline.admin_slides"
 COMMAND_OPEN_COURSE_PAGE = "campusonline.open_course_page"
 TAB_TITLE = "Course"
+SIDEBAR_BOX_COURSE = "course"
 
 
 def deck_course_url(deck: Deck | None) -> str | None:
@@ -73,7 +74,7 @@ def activate(host: Host) -> None:
         footer_action=FooterAction(
             "Insert slides", run=lambda page: page.controller.insert(),
             enabled=lambda page: page.controller.can_insert()))
-    host.add_sidebar_box("course", "Course", build_box, size="compact", when=has_course_link)
+    host.add_sidebar_box(SIDEBAR_BOX_COURSE, "Course", build_box, size="compact", when=has_course_link)
 
     # Called on a worker thread: reads the cache, never fetches.
     host.add_render_priority(lambda deck: course_schedule.session_soon(deck_course_url(deck)))

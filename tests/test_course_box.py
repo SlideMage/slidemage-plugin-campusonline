@@ -44,6 +44,21 @@ def test_today_counts_as_upcoming():
     assert "10.10.2026" in course_box.box_lines(URL, {"dates": ["10.10.2026"]}, TODAY).next_session
 
 
+def test_default_today_is_evaluated_on_every_call(monkeypatch):
+    class Clock:
+        day = TODAY
+
+        @classmethod
+        def today(cls):
+            return cls.day
+
+    monkeypatch.setattr(course_box, "date", Clock)
+    entry = {"dates": ["10.10.2026", "11.10.2026"]}
+    assert "10.10.2026" in course_box.box_lines(URL, entry).next_session
+    Clock.day = date(2026, 10, 11)
+    assert "11.10.2026" in course_box.box_lines(URL, entry).next_session
+
+
 def test_title_time_and_room_when_cached():
     entry = {"title": "Management Science", "sessions": [
         {"date": "05.10.2026", "start": "09:00", "end": "10:00", "location": "SR 1"},
@@ -139,6 +154,33 @@ def test_built_box_never_fetches(tmp_path, qapp, monkeypatch):
     host = FakeHost(tmp_path)
     page = box.build_box(host, host.make_deck("d", DECK, ("course",)))   # no cache folder: nothing cached
     assert course_box.NOTHING_CACHED in labels(page)
+
+
+def test_box_rebuilt_after_midnight_uses_the_new_date(tmp_path, qapp, monkeypatch):
+    from campusonline.ui import box
+
+    class Clock:
+        day = TODAY
+
+        @classmethod
+        def today(cls):
+            return cls.day
+
+    monkeypatch.setattr(box, "date", Clock)
+    host = FakeHost(tmp_path)
+    course_schedule.use_cache_folder(tmp_path)
+    try:
+        sessions = tuple(course_schedule.CourseSession(day, "09:00", "10:00", "SR 1", "", "")
+                         for day in ("10.10.2026", "11.10.2026"))
+        course_schedule.remember_schedule(URL, course_schedule.CourseSchedule((course_schedule.CourseGroup("G", sessions),)))
+        deck = host.make_deck("d", DECK, ("course",))
+        before = box.build_box(host, deck)
+        assert "Next session: Sa 10.10.2026, 09:00–10:00, SR 1" in labels(before)
+        Clock.day = date(2026, 10, 11)
+        after = box.build_box(host, deck)
+        assert "Next session: So 11.10.2026, 09:00–10:00, SR 1" in labels(after)
+    finally:
+        course_schedule.use_cache_folder(None)
 
 
 def _qlabel():

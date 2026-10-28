@@ -19,7 +19,7 @@ from PySide6.QtCore import QEvent, QObject
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QHBoxLayout, QLineEdit, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-from .. import admin_slides, course_link, course_schedule
+from .. import SIDEBAR_BOX_COURSE, admin_slides, course_link, course_schedule
 from slidemage.plugin_api import Deck, Host, InsertPosition, StaleFileError, Widget
 
 STALE = "The deck changed on disk; reopen Deck settings."
@@ -203,6 +203,12 @@ class CourseTab:
         self._gone = True
 
     def _on_fetched(self, result: tuple[object, object] | None, error: BaseException | None) -> None:
+        # The worker has already updated the cache, even if the sheet closed while it was fetching.
+        if error is None and result is not None and any(
+                isinstance(part, (course_schedule.CourseSchedule, course_schedule.CourseDetail)) for part in result):
+            refresh = getattr(self.host, "refresh_sidebar_box", None)
+            if refresh is not None:  # older hosts have no explicit box invalidation
+                refresh(SIDEBAR_BOX_COURSE)
         if self._gone:      # the sheet closed meanwhile
             return
         if error is not None or result is None:

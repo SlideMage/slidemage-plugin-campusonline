@@ -69,7 +69,8 @@ def _describe(day: date, item: dict, language: str) -> str:
 
 def box_lines(course_url: str, entry: dict, today: date | None = None, language: str = "en") -> BoxLines:
     """The box's lines for the course at `course_url` from its cache `entry`. The weekday names follow
-    `language` ("de" or "en"; anything else is English). The other words stay English."""
+    `language` ("de" or "en"; anything else is English). The other words stay English.
+    When `today` is omitted, read the current date on each call so midnight rebuilds show the next session."""
     today = today or date.today()
     language = language if language in WEEKDAYS else "en"
     title = entry.get("title") if isinstance(entry.get("title"), str) and entry.get("title") else ""

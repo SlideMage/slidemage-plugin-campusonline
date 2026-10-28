@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """The compact Course box of the right column: the course, its next session, and two buttons.
 
-It shows the cached schedule only and never fetches: SlideMage rebuilds a box whenever the deck changes, so
-a fetch here would hit the network again and again. The Course tab does the fetching and fills the cache.
+It shows the cached schedule only and never fetches. The Course tab fills the cache and requests a rebuild;
+SlideMage also rebuilds when the deck changes and at midnight. Each build uses the current date.
 """
 from __future__ import annotations
+
+from datetime import date
 
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
@@ -16,7 +18,7 @@ from slidemage.plugin_api import Deck, Host, Widget
 def build_box(host: Host, deck: Deck) -> Widget:
     page = host.Page()
     url = course_link.parse_course_url(deck.text) or ""
-    lines = course_box.box_lines(url, course_box.cached_entry(url), language=host.deck_language(deck))
+    lines = course_box.box_lines(url, course_box.cached_entry(url), today=date.today(), language=host.deck_language(deck))
     page.body.addWidget(host.caption(lines.title))
     if lines.next_session:
         page.body.addWidget(host.caption(lines.next_session))

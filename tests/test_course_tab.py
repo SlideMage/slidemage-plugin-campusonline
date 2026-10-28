@@ -139,6 +139,7 @@ def test_the_course_is_fetched_once_when_first_shown(host, qapp, fetched, langua
     page.hide()
     page.show()
     assert fetched == [(URL, language)]
+    assert host.refreshed_sidebar_boxes == [campusonline.SIDEBAR_BOX_COURSE]
     headings = r"\textbf{Date} & \textbf{Time}" if language == "en" else r"\textbf{Datum} & \textbf{Zeit}"
     assert headings in tab.slide_specs[0][1]
 
@@ -154,6 +155,7 @@ def test_a_result_after_the_widget_is_gone_is_ignored(host, qapp, fetched):
     tab._on_gone()
     callback(work(), None)
     assert tab.slide_specs == [] and tab.schedule is None
+    assert host.refreshed_sidebar_boxes == [campusonline.SIDEBAR_BOX_COURSE]
 
 
 def test_a_failing_worker_is_shown_as_not_available(host, qapp, fetched):
@@ -163,6 +165,68 @@ def test_a_failing_worker_is_shown_as_not_available(host, qapp, fetched):
     tab.start()
     assert "boom" in tab.sessions_status.text() and "boom" in tab.title_status.text()
     assert tab.slide_specs == []
+    assert host.refreshed_sidebar_boxes == []
+
+
+@pytest.mark.parametrize("result", [
+    (CourseSchedule(()), "detail unavailable"),
+    ("schedule unavailable", DETAIL),
+    (CourseSchedule(()), DETAIL),
+])
+def test_a_successful_fetch_requests_box_refresh_after_the_cache_is_updated(host, qapp, monkeypatch, result):
+    _, page, tab = make_tab(host)
+    # Exercise the real fetch wrapper, with only the network calls replaced.
+    def schedule(url):
+        if isinstance(result[0], str):
+            raise RuntimeError(result[0])
+        course_schedule.remember_schedule(url, result[0])
+        return result[0]
+
+    def detail(url, language):
+        if isinstance(result[1], str):
+            raise RuntimeError(result[1])
+        return result[1]
+
+    monkeypatch.setattr(course_schedule, "fetch_schedule", schedule)
+    monkeypatch.setattr(course_schedule, "fetch_course_detail", detail)
+    refreshed_entries = []
+    record_refresh = host.refresh_sidebar_box
+
+    def refresh(key):
+        refreshed_entries.append(course_schedule.cached_entry(URL))
+        record_refresh(key)
+
+    monkeypatch.setattr(host, "refresh_sidebar_box", refresh)
+    tab.start()
+    assert host.refreshed_sidebar_boxes == [campusonline.SIDEBAR_BOX_COURSE]
+    assert len(refreshed_entries) == 1
+    if not isinstance(result[0], str):
+        assert refreshed_entries[0]["dates"] == []
+    if not isinstance(result[1], str):
+        assert refreshed_entries[0]["title"] == DETAIL.title
+
+
+def test_fetch_works_with_an_older_host_without_sidebar_refresh(host, qapp, fetched):
+    # Hide the new API while retaining the rest of the fake host contract.
+    class OlderHost:
+        def __getattr__(self, name):
+            if name == "refresh_sidebar_box":
+                raise AttributeError(name)
+            return getattr(host, name)
+
+    from campusonline.ui.deck_tab import build_tab
+
+    page = build_tab(OlderHost(), host.make_deck("old", LINKED, ("course",)))
+    page.controller.start()
+    assert page.controller.schedule == fetched.result[0][0]
+    assert host.refreshed_sidebar_boxes == []
+
+
+def test_a_fetch_with_no_new_data_does_not_request_box_refresh(host, qapp, fetched):
+    fetched.result[0] = ("schedule unavailable", "detail unavailable")
+    _, page, tab = make_tab(host)
+    tab.start()
+    assert host.refreshed_sidebar_boxes == []
 
 
 def test_multiple_groups_and_lecturers_build_combined_preview(host, qapp, fetched):

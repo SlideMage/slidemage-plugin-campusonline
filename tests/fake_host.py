@@ -115,6 +115,7 @@ class FakeHost:
         self.menus: dict[str, list[str]] = {}
         self.tabs: list[Tab] = []
         self.boxes: list[Box] = []
+        self.refreshed_sidebar_boxes: list[str] = []
         self.render_priorities: list[Callable[[Any], bool]] = []
         self.opened_urls: list[str] = []
         self.opened_settings: list[tuple[Any, str | None]] = []
@@ -190,6 +191,9 @@ class FakeHost:
         self.render_priorities.append(soon)
 
     # -- Host: what it calls -------------------------------------------------------------------------------------
+
+    def refresh_sidebar_box(self, key: str) -> None:
+        self.refreshed_sidebar_boxes.append(key)
 
     def run_in_background(self, work, done) -> None:
         try:
