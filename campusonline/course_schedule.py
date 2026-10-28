@@ -93,12 +93,16 @@ def _course_parts(course_url: str) -> tuple[str, str, str]:
     values = parse_qs(parsed.query, keep_blank_values=True).get("pStpSpNr", [])
     if len(values) != 1 or not values[0].isdigit():
         raise ValueError("course URL must contain one numeric pStpSpNr parameter")
-    return f"https://{parsed.hostname}/{instance}", values[0], parsed.hostname
+    host = f"[{parsed.hostname}]" if ":" in parsed.hostname else parsed.hostname
+    port = parsed.port
+    authority = f"{host}:{port}" if port is not None and port != 443 else host
+    return f"https://{authority}/{instance}", values[0], parsed.hostname
 
 
-def _course_number(course_url: str) -> str:
-    """Return the public course number or raise ``ValueError``."""
-    return _course_parts(course_url)[1]
+def _cache_key(course_url: str) -> str:
+    """Canonical installation and course, independent of the course page's path or other query parameters."""
+    base, number, _host = _course_parts(course_url)
+    return f"{base}?pStpSpNr={number}"
 
 
 def course_groups_url(course_url: str) -> str:
@@ -151,12 +155,14 @@ def fetch_schedule(course_url: str) -> CourseSchedule:
 
 _CACHE_FILE_NAME = "course-schedules.json"
 _cache_folder: Optional[Path] = None
+_known_installations: set[str] = set()
 
 
 def use_cache_folder(folder: Optional[Path]) -> None:
     """Keep the fetched session dates in `folder` from now on (None: keep none)."""
     global _cache_folder
     _cache_folder = folder
+    _known_installations.clear()
 
 
 def _cache_file() -> Optional[Path]:
@@ -172,6 +178,26 @@ def _read_cache(path: Path) -> dict:
     return known if isinstance(known, dict) else {}
 
 
+def _entry_for(known: dict, course_url: str) -> tuple[str, dict, bool]:
+    """Resolve an entry and whether it is a legacy entry safe to migrate.
+
+    Legacy files never recorded an origin. Only use a number-only entry when the requested installation is
+    the sole one known from URLs seen in this cache folder or full keys already in the file. A full key,
+    even an invalid entry, always takes precedence. Merely reading never rewrites the file.
+    """
+    base, number, _host = _course_parts(course_url)
+    key = _cache_key(course_url)
+    _known_installations.add(base)
+    for existing_key in known:
+        try:
+            _known_installations.add(_course_parts(existing_key)[0])
+        except ValueError:
+            continue
+    legacy = key not in known and _known_installations == {base} and isinstance(known.get(number), dict)
+    entry = known.get(number) if legacy else known.get(key)
+    return key, entry if isinstance(entry, dict) else {}, legacy
+
+
 def _update_entry(course_url: str, change: Callable[[dict], dict]) -> None:
     """Store `change(entry)` as the course's entry in the cache, where `entry` is its current entry (or ``{}``).
     Best-effort: a failure here is not the caller's."""
@@ -180,9 +206,10 @@ def _update_entry(course_url: str, change: Callable[[dict], dict]) -> None:
         if path is None:
             return
         known = _read_cache(path)
-        number = _course_number(course_url)
-        entry = known.get(number)
-        known[number] = change(dict(entry) if isinstance(entry, dict) else {})
+        key, entry, legacy = _entry_for(known, course_url)
+        known[key] = change(dict(entry))
+        if legacy:
+            del known[_course_parts(course_url)[1]]
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(known), encoding="utf-8")
     except Exception:  # noqa: BLE001
@@ -225,7 +252,7 @@ def cached_entry(course_url: str | None) -> dict:
         path = _cache_file()
         if path is None:
             return {}
-        entry = _read_cache(path).get(_course_number(course_url))
+        _key, entry, _legacy = _entry_for(_read_cache(path), course_url)
     except Exception:  # noqa: BLE001
         return {}
     return entry if isinstance(entry, dict) else {}
@@ -235,7 +262,9 @@ def adopt_legacy_cache(legacy_folder: Path | None) -> bool:
     """Copy the session dates SlideMage kept before the plugin existed (`legacy_folder`) into the plugin's cache
     folder, so a course that meets soon still counts without a refetch. Called once from activate(). Never
     overwrites an existing plugin cache, never moves or deletes the old file, and copies nothing that is not valid
-    JSON. Local files only, and cheap."""
+    JSON. Originless entries are kept unresolved: cached_entry() applies the same conservative ownership
+    check to adopted entries, and the next write migrates an unambiguous entry to its full key.
+    Local files only, and cheap."""
     path = _cache_file()
     if path is None or legacy_folder is None or path.exists():
         return False
@@ -262,8 +291,7 @@ def session_soon(course_url: Optional[str], *, days: int = 7, today: Optional[da
     if not course_url or path is None:
         return False
     try:
-        known = json.loads(path.read_text(encoding="utf-8"))
-        dates = known.get(_course_number(course_url), {}).get("dates", [])
+        dates = cached_entry(course_url).get("dates", [])
         today = today or date.today()
         for text in dates:
             day = datetime.strptime(text, "%d.%m.%Y").date()

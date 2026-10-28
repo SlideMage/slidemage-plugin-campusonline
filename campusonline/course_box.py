@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """What the compact Course box says, worked out from the cached schedule alone (no Qt, no network).
 
-The cache (``course_schedule.remember_schedule`` and ``remember_title``) holds, per course number, the title and
+The cache (``course_schedule.remember_schedule`` and ``remember_title``) holds, per installation and course, the title and
 the sessions (``{date, start, end, location}``) of the course. Where a title is not cached the box shows the
 course page's host and number instead, and where the sessions are not cached only the session dates it has.
 """

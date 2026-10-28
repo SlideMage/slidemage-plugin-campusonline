@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
 
+import json
+from datetime import date
+
 import pytest
 
 from campusonline import course_schedule
@@ -64,3 +67,31 @@ def test_creates_the_plugin_cache_folder_when_missing(plugin_folder, legacy_fold
     assert not plugin_folder.exists()
     assert course_schedule.adopt_legacy_cache(legacy_folder) is True
     assert (plugin_folder / "course-schedules.json").is_file()
+
+
+@pytest.mark.parametrize("write", ["title", "schedule"])
+def test_adopted_legacy_entry_is_read_and_migrated_on_next_write(plugin_folder, legacy_folder, write):
+    url = "https://one.example/instance/course?pStpSpNr=12345"
+    assert course_schedule.adopt_legacy_cache(legacy_folder)
+    legacy = json.loads(LEGACY_TEXT)["12345"]
+    assert course_schedule.cached_entry(url) == legacy
+    assert course_schedule.session_soon(url, today=date(2026, 10, 18))
+    assert (plugin_folder / "course-schedules.json").read_text() == LEGACY_TEXT  # read-only fallback
+    if write == "title":
+        course_schedule.remember_title(url, "New title")
+        assert course_schedule.cached_entry(url) == {**legacy, "title": "New title"}
+    else:
+        course_schedule.remember_schedule(url, course_schedule.CourseSchedule(()))
+        assert course_schedule.cached_entry(url)["dates"] == []
+    known = json.loads((plugin_folder / "course-schedules.json").read_text())
+    assert list(known) == ["https://one.example/instance?pStpSpNr=12345"]
+    assert course_schedule.cached_entry("https://two.example/instance/course?pStpSpNr=12345") == {}
+    assert (legacy_folder / "course-schedules.json").read_text() == LEGACY_TEXT
+
+
+def test_adopted_legacy_entry_is_ignored_with_multiple_known_installations(plugin_folder, legacy_folder):
+    assert course_schedule.adopt_legacy_cache(legacy_folder)
+    course_schedule.cached_entry("https://one.example/instance?pStpSpNr=999")
+    other = "https://two.example/instance?pStpSpNr=12345"
+    assert course_schedule.cached_entry(other) == {}
+    assert not course_schedule.session_soon(other, today=date(2026, 10, 18))

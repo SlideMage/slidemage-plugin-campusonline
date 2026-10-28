@@ -410,3 +410,57 @@ def test_cached_entry_is_empty_for_missing_unreadable_or_non_course_urls(cache_f
     assert course_schedule.cached_entry(SOON_URL) == {}
     assert course_schedule.cached_entry("not a course url") == {}
     assert course_schedule.cached_entry(None) == {}
+
+
+@pytest.mark.parametrize("other", [
+    "https://other.example/kfu_online/course?pStpSpNr=12345",
+    "https://online.uni-graz.at/other/course?pStpSpNr=12345",
+    "https://online.uni-graz.at:8443/kfu_online/course?pStpSpNr=12345",
+])
+def test_same_course_number_on_different_installations_stays_separate(cache_folder, other):
+    session = CourseSession("20.10.2026", "10:00", "11:30", "Room one", "", "")
+    course_schedule.remember_title(SOON_URL, "First course")
+    course_schedule.remember_schedule(SOON_URL, CourseSchedule((CourseGroup("G", (session,)),)))
+    course_schedule.remember_schedule(other, CourseSchedule(()))
+    course_schedule.remember_title(other, "Second course")
+
+    assert course_schedule.cached_entry(SOON_URL)["title"] == "First course"
+    assert course_schedule.cached_entry(SOON_URL)["sessions"][0]["location"] == "Room one"
+    assert course_schedule.cached_entry(other)["title"] == "Second course"
+    assert course_schedule.cached_entry(other)["sessions"] == []
+    assert course_schedule.session_soon(SOON_URL, today=date(2026, 10, 18))
+    assert not course_schedule.session_soon(other, today=date(2026, 10, 18))
+
+
+def test_cache_key_uses_the_url_parsers_canonical_installation_and_course(cache_folder):
+    course_schedule.remember_title(SOON_URL, "First course")
+    alternate = "https://ONLINE.UNI-GRAZ.AT:443/kfu_online/another/page?foo=bar&pStpSpNr=12345#section"
+    assert course_schedule.cached_entry(alternate) == {"title": "First course"}
+    known = json.loads((cache_folder / "course-schedules.json").read_text())
+    assert known == {"https://online.uni-graz.at/kfu_online?pStpSpNr=12345": {"title": "First course"}}
+
+
+@pytest.mark.parametrize("keyed_entry", [{}, {"title": "Current"}, "invalid"])
+def test_full_key_takes_precedence_over_legacy_even_if_empty_or_invalid(cache_folder, keyed_entry):
+    cache_folder.mkdir()
+    path = cache_folder / "course-schedules.json"
+    path.write_text(json.dumps({"12345": {"title": "Legacy"},
+                               "https://online.uni-graz.at/kfu_online?pStpSpNr=12345": keyed_entry}))
+    expected = keyed_entry if isinstance(keyed_entry, dict) else {}
+    assert course_schedule.cached_entry(SOON_URL) == expected
+
+
+@pytest.mark.parametrize("known_in_file", [False, True])
+def test_ambiguous_legacy_entries_are_never_read_or_merged(cache_folder, known_in_file):
+    cache_folder.mkdir()
+    known = {"12345": {"title": "Unknown owner", "dates": ["20.10.2026"]}}
+    other = "https://other.example/instance?pStpSpNr=999"
+    if known_in_file:
+        known[other] = {}
+    else:
+        assert course_schedule.cached_entry(other) == {}  # observed, even without a persisted entry
+    (cache_folder / "course-schedules.json").write_text(json.dumps(known))
+    assert course_schedule.cached_entry(SOON_URL) == {}
+    assert not course_schedule.session_soon(SOON_URL, today=date(2026, 10, 18))
+    course_schedule.remember_title(SOON_URL, "Fetched title")
+    assert course_schedule.cached_entry(SOON_URL) == {"title": "Fetched title"}
