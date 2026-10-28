@@ -95,6 +95,7 @@ The handover's `add_deck_marker("course URL")` is replaced by `edit_deck_text` p
   `course_box` already shows `title` and `sessions` (`date`, `start`, `end`, `location`) if the cache entry has
   them: `course_schedule.remember_schedule` would have to store them (also the title from the course detail).
   The Course tab's fetch (`fetch_schedule`) already fills the cache.
+  The box's weekday follows the deck's language (decision 2026-10-28: "Mo" for a German deck, "Mon" for English; the other words stay English). The group of the next session is not shown, because a course's groups usually have decks of their own.
 - No change to `Host`. `course_box.cached_entry` uses `course_schedule`'s private `_cache_file` and
   `_course_number`; a public reader there would be cleaner.
 - `tests/fake_host.py`: `Page`, `Field` and `caption` return real PySide6 widgets when PySide6 is installed.

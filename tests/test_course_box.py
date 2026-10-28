@@ -27,6 +27,17 @@ def test_next_session_is_the_first_one_not_past():
     assert lines.next_session == "Next session: Mon 12.10.2026" and lines.note == ""
 
 
+@pytest.mark.parametrize("language, weekday", [("de", "Di"), ("en", "Tue"), ("fr", "Tue"), (None, "Tue")])
+def test_weekday_follows_the_deck_language_and_unknown_means_english(language, weekday):
+    lines = course_box.box_lines(URL, {"dates": ["31.12.2999"]}, TODAY, language=language)
+    assert lines.next_session == f"Next session: {weekday} 31.12.2999"
+
+
+def test_german_weekdays_for_past_sessions_too():
+    lines = course_box.box_lines(URL, {"dates": ["06.10.2026"]}, TODAY, language="de")
+    assert lines.note == "No upcoming session; the last was Di 06.10.2026."
+
+
 def test_today_counts_as_upcoming():
     assert "10.10.2026" in course_box.box_lines(URL, {"dates": ["10.10.2026"]}, TODAY).next_session
 
@@ -92,11 +103,25 @@ def test_built_box_shows_cached_data_and_its_buttons_work(tmp_path, qapp):
     try:
         deck = host.make_deck("d", DECK, ("course",))
         page = box.build_box(host, deck)
-        assert labels(page) == ["Course 1002516 at online.uni-graz.at", "Next session: Tue 31.12.2999"]
+        assert labels(page) == ["Course 1002516 at online.uni-graz.at", "Next session: Di 31.12.2999"]
         page.open_button.click()
         assert host.opened_urls == [URL]
         page.admin_button.click()
         assert host.opened_settings == [(deck, "Course")]
+    finally:
+        course_schedule.use_cache_folder(None)
+
+
+def test_built_box_uses_english_weekdays_for_an_english_deck(tmp_path, qapp):
+    from campusonline.ui import box
+
+    host = FakeHost(tmp_path)
+    course_schedule.use_cache_folder(tmp_path)
+    (tmp_path / "course-schedules.json").write_text(json.dumps({"1002516": {"dates": ["31.12.2999"]}}))
+    try:
+        english = DECK.replace("\\begin{document}", "\\decklanguage{english}\n\\begin{document}")
+        page = box.build_box(host, host.make_deck("e", english, ("course",)))
+        assert "Next session: Tue 31.12.2999" in labels(page)
     finally:
         course_schedule.use_cache_folder(None)
 

@@ -14,7 +14,11 @@ from urllib.parse import parse_qs, urlsplit
 
 from . import course_schedule
 
-WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")     # not strftime: that follows the locale
+# Weekday names by the deck's language, Monday first. Not strftime: that follows the locale.
+WEEKDAYS = {
+    "en": ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+    "de": ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"),
+}
 NOTHING_CACHED = "No session dates cached yet — open the Course tab to load them."
 
 
@@ -54,8 +58,8 @@ def _sessions(entry: dict) -> list[tuple[date, dict]]:
     return sorted(found, key=lambda pair: pair[0])
 
 
-def _describe(day: date, item: dict) -> str:
-    parts = [f"{WEEKDAYS[day.weekday()]} {day:%d.%m.%Y}"]
+def _describe(day: date, item: dict, language: str) -> str:
+    parts = [f"{WEEKDAYS[language][day.weekday()]} {day:%d.%m.%Y}"]
     if item.get("start"):
         parts.append(f"{item['start']}–{item['end']}" if item.get("end") else str(item["start"]))
     if item.get("location"):
@@ -63,9 +67,11 @@ def _describe(day: date, item: dict) -> str:
     return ", ".join(parts)
 
 
-def box_lines(course_url: str, entry: dict, today: date | None = None) -> BoxLines:
-    """The box's lines for the course at `course_url` from its cache `entry`."""
+def box_lines(course_url: str, entry: dict, today: date | None = None, language: str = "en") -> BoxLines:
+    """The box's lines for the course at `course_url` from its cache `entry`. The weekday names follow
+    `language` ("de" or "en"; anything else is English). The other words stay English."""
     today = today or date.today()
+    language = language if language in WEEKDAYS else "en"
     title = entry.get("title") if isinstance(entry.get("title"), str) and entry.get("title") else ""
     title = title or course_label(course_url)
     sessions = _sessions(entry)
@@ -73,5 +79,6 @@ def box_lines(course_url: str, entry: dict, today: date | None = None) -> BoxLin
         return BoxLines(title, "", NOTHING_CACHED)
     upcoming = [(day, item) for day, item in sessions if day >= today]
     if upcoming:
-        return BoxLines(title, "Next session: " + _describe(*upcoming[0]), "")
-    return BoxLines(title, "", f"No upcoming session; the last was {_describe(*sessions[-1])}.")
+        return BoxLines(title, "Next session: " + _describe(*upcoming[0], language), "")
+    last = _describe(*sessions[-1], language)
+    return BoxLines(title, "", f"No upcoming session; the last was {last}.")

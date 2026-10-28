@@ -16,7 +16,7 @@ from ..host import Deck, Host, Widget
 def build_box(host: Host, deck: Deck) -> Widget:
     page = host.Page()
     url = course_link.parse_course_url(deck.text) or ""
-    lines = course_box.box_lines(url, course_box.cached_entry(url))
+    lines = course_box.box_lines(url, course_box.cached_entry(url), language=host.deck_language(deck))
     page.body.addWidget(host.caption(lines.title))
     if lines.next_session:
         page.body.addWidget(host.caption(lines.next_session))
