@@ -306,7 +306,7 @@ def test_insert_slides_inserts_through_the_host_at_the_chosen_place(host, qapp, 
     host.tabs[0].footer_action.run(page)
     text = deck.path.read_text()
     assert "\\slide{a-DE-x}\n\\slide{T01-DE-Title-Slide}\n\\slide{T02-DE-Course-Sessions}\n\\slide{b-DE-y}" in text
-    assert (host.root / "slides" / "T02-DE-Course-Sessions.tex").read_text() == tab.slide_specs[1][1]
+    assert (host.root / "slides" / "T02-DE-Course-Sessions.tex").read_text("utf-8") == tab.slide_specs[1][1]
     assert "Inserted 2" in tab.status.text() and not enabled(host, page)     # the snapshot is stale now
 
 

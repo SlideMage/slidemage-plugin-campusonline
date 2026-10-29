@@ -276,6 +276,71 @@ class FakeHost:
     def open_deck_settings(self, deck, tab=None) -> None:
         self.opened_settings.append((deck, tab))
 
+    # -- Host: calls for AI plugins, which CampusOnline doesn't use ----------------------------------------------------
+
+    def add_ai_route(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("add_ai_route: CampusOnline doesn't use it")
+
+    def add_settings_section(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("add_settings_section: CampusOnline doesn't use it")
+
+    def add_entry_point(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("add_entry_point: CampusOnline doesn't use it")
+
+    def entry_point_command(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("entry_point_command: CampusOnline doesn't use it")
+
+    def terminal(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("terminal: CampusOnline doesn't use it")
+
+    def watch_external_edits(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("watch_external_edits: CampusOnline doesn't use it")
+
+    def credentials(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("credentials: CampusOnline doesn't use it")
+
+    def acquire_route_task(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("acquire_route_task: CampusOnline doesn't use it")
+
+    def model_choices_changed(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("model_choices_changed: CampusOnline doesn't use it")
+
+    def legacy_secret(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("legacy_secret: CampusOnline doesn't use it")
+
+    def legacy_ollama_host(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("legacy_ollama_host: CampusOnline doesn't use it")
+
+    def run_in_background_with_progress(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("run_in_background_with_progress: CampusOnline doesn't use it")
+
+    def ai_tools(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("ai_tools: CampusOnline doesn't use it")
+
+    def focus(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("focus: CampusOnline doesn't use it")
+
+    def Surface(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("Surface: CampusOnline doesn't use it")
+
+    def Button(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("Button: CampusOnline doesn't use it")
+
+    def Chip(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("Chip: CampusOnline doesn't use it")
+
+    def IconButton(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("IconButton: CampusOnline doesn't use it")
+
+    def IconLabel(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("IconLabel: CampusOnline doesn't use it")
+
+    def style_chat_widget(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("style_chat_widget: CampusOnline doesn't use it")
+
+    def theme_color(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("theme_color: CampusOnline doesn't use it")
+
     # -- Host: widgets ------------------------------------------------------------------------------------------
 
     def Page(self) -> Any:
