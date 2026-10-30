@@ -610,14 +610,11 @@ def translate_schedule(schedule: CourseSchedule) -> CourseSchedule:
 
 
 def table_environment() -> str:
-    """The framework's table environment: SMTable from SlideMage's own theme on (the release that added
-    compat_own_theme, which also migrates a project's gothamtable), gothamtable before. Asked of the running
-    SlideMage, not its version number, because the version numbers are renumbered later."""
-    try:
-        import slidemage.compat_own_theme  # noqa: F401  (a plain import also works in the frozen app)
-    except ImportError:
-        return "gothamtable"
-    return "SMTable"
+    """The framework's table environment, as the running SlideMage names it: SMTable with SlideMage's own theme,
+    gothamtable with a SlideMage whose plugin API does not name it yet."""
+    from slidemage import plugin_api
+
+    return getattr(plugin_api, "TABLE_ENVIRONMENT", "gothamtable")
 
 
 def render_group_table(group: CourseGroup, language: str = "de") -> str:
