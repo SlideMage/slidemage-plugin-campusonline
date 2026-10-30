@@ -46,3 +46,9 @@ importable; run them with SlideMage's `src` on the path, for example
    release with it.
 
 A published version never changes: never replace or delete its asset; a fix is a new version.
+
+## Licence
+
+GPL-3.0-or-later, see `LICENSE`. The plugin comes with no warranty: to the extent permitted by applicable law, it is
+provided "as is", without warranty of any kind, and the copyright holders are not liable for any damage arising from
+its use (GPL-3.0 sections 15 and 16).
