@@ -1,6 +1,6 @@
 id = "campusonline"
 name = "CampusOnline"
-version = "1.0.0"
+version = "1.0.1"
 api_version = 1
 requires_slidemage = ">=9.0"
 summary = "Course links, admin slides and session-aware rendering for CAMPUSonline courses."

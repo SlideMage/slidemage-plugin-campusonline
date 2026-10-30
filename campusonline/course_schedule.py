@@ -609,6 +609,14 @@ def translate_schedule(schedule: CourseSchedule) -> CourseSchedule:
     )
 
 
+def table_environment() -> str:
+    """The framework's table environment, as the running SlideMage names it: SMTable with SlideMage's own theme,
+    gothamtable with a SlideMage whose plugin API does not name it yet."""
+    from slidemage import plugin_api
+
+    return getattr(plugin_api, "TABLE_ENVIRONMENT", "gothamtable")
+
+
 def render_group_table(group: CourseGroup, language: str = "de") -> str:
     """Render one group as safe LaTeX that can be placed inside a frame,
     with the column headings in `language` ("de" or "en"). The cells are
@@ -627,19 +635,20 @@ def render_group_table(group: CourseGroup, language: str = "de") -> str:
         )) + r" \\")
     heading = " & ".join(
         "\\textbf{" + labels[key] + "}" for key in ("date", "time", "location", "event"))
+    table = table_environment()
     return "\n".join((
         r"\scriptsize",
         "\\textbf{" + _escape_latex(group.name) + "}\\par\\vspace{2pt}",
         r"\renewcommand{\arraystretch}{1.08}",
         # the project's table style (yellow rules, flush edges); same column
         # geometry as the former \tabcolsep 2pt + @{} edges
-        r"\begin{gothamtable}[gap=4pt]{p{.13\linewidth}p{.14\linewidth}p{.22\linewidth}p{.42\linewidth}}",
+        "\\begin{" + table + r"}[gap=4pt]{p{.13\linewidth}p{.14\linewidth}p{.22\linewidth}p{.42\linewidth}}",
         r"\toprule",
         heading + r" \\",
         r"\midrule",
         *rows,
         r"\bottomrule",
-        r"\end{gothamtable}",
+        "\\end{" + table + "}",
     ))
 
 

@@ -23,6 +23,7 @@ from campusonline.course_schedule import (
     parse_course_detail,
     parse_schedule,
     render_group_table,
+    table_environment,
     render_title_slide,
     translate_schedule,
     translate_to_english,
@@ -232,8 +233,9 @@ def test_renderer_escapes_latex_special_characters():
     rendered = render_group_table(group)
 
     assert r"R\&D 50\% \#1 \_x\_ \{y\} \textasciitilde{} \textasciicircum{} \textbackslash{}end" in rendered
-    assert r"\begin{gothamtable}[gap=4pt]{p{.13\linewidth}" in rendered
-    assert r"\end{gothamtable}" in rendered
+    table = table_environment()
+    assert "\\begin{" + table + r"}[gap=4pt]{p{.13\linewidth}" in rendered
+    assert "\\end{" + table + "}" in rendered
     assert r"\toprule" in rendered
     assert r"\textbf{Gruppe Wirtschaftsinformatik}\par" in rendered
     assert "06.10.2026 & 08:30--10:00 & HS 01" in rendered
