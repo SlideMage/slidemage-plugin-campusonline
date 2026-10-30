@@ -609,6 +609,17 @@ def translate_schedule(schedule: CourseSchedule) -> CourseSchedule:
     )
 
 
+def table_environment() -> str:
+    """The framework's table environment: SMTable from SlideMage's own theme on (the release that added
+    compat_own_theme, which also migrates a project's gothamtable), gothamtable before. Asked of the running
+    SlideMage, not its version number, because the version numbers are renumbered later."""
+    try:
+        import slidemage.compat_own_theme  # noqa: F401  (a plain import also works in the frozen app)
+    except ImportError:
+        return "gothamtable"
+    return "SMTable"
+
+
 def render_group_table(group: CourseGroup, language: str = "de") -> str:
     """Render one group as safe LaTeX that can be placed inside a frame,
     with the column headings in `language` ("de" or "en"). The cells are
@@ -627,19 +638,20 @@ def render_group_table(group: CourseGroup, language: str = "de") -> str:
         )) + r" \\")
     heading = " & ".join(
         "\\textbf{" + labels[key] + "}" for key in ("date", "time", "location", "event"))
+    table = table_environment()
     return "\n".join((
         r"\scriptsize",
         "\\textbf{" + _escape_latex(group.name) + "}\\par\\vspace{2pt}",
         r"\renewcommand{\arraystretch}{1.08}",
         # the project's table style (yellow rules, flush edges); same column
         # geometry as the former \tabcolsep 2pt + @{} edges
-        r"\begin{gothamtable}[gap=4pt]{p{.13\linewidth}p{.14\linewidth}p{.22\linewidth}p{.42\linewidth}}",
+        "\\begin{" + table + r"}[gap=4pt]{p{.13\linewidth}p{.14\linewidth}p{.22\linewidth}p{.42\linewidth}}",
         r"\toprule",
         heading + r" \\",
         r"\midrule",
         *rows,
         r"\bottomrule",
-        r"\end{gothamtable}",
+        "\\end{" + table + "}",
     ))
 
 
