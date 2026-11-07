@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable
 
 from slidemage.plugin_api import FooterAction, InsertPosition, StaleFileError
@@ -354,7 +355,8 @@ class FakeHost:
         raise NotImplementedError("toast: CampusOnline doesn't use it")
 
     def theme(self, *args, **kwargs) -> Any:
-        raise NotImplementedError("theme: CampusOnline doesn't use it")
+        """Only the spacing steps CampusOnline reads (the real values of SlideMage v0.14.36)."""
+        return SimpleNamespace(space_2xs=2, space_xs=4, space_sm=6, space_md=8, space_lg=10, space_xl=12, space_2xl=16)
 
     def on_theme_changed(self, *args, **kwargs) -> Any:
         raise NotImplementedError("on_theme_changed: CampusOnline doesn't use it")
@@ -391,6 +393,9 @@ class FakeHost:
 
     def IconButton(self, *args, **kwargs) -> Any:
         raise NotImplementedError("IconButton: CampusOnline doesn't use it")
+
+    def icon(self, *args, **kwargs) -> Any:
+        raise NotImplementedError("icon: CampusOnline doesn't use it")
 
     def IconLabel(self, *args, **kwargs) -> Any:
         raise NotImplementedError("IconLabel: CampusOnline doesn't use it")

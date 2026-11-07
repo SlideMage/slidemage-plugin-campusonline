@@ -105,7 +105,7 @@ class CourseTab:
         self.title_status = host.caption("")
         self.lecturers = QVBoxLayout()
         self.lecturers.setContentsMargins(0, 0, 0, 0)
-        self.lecturers.setSpacing(4)
+        self.lecturers.setSpacing(host.theme().space_xs)
         for widget in (self.title_check, self.title_status):
             self.title_section.body.addWidget(widget)
         self.title_section.body.addLayout(self.lecturers)

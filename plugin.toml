@@ -1,8 +1,8 @@
 id = "campusonline"
 name = "CampusOnline"
-version = "1.0.2"
+version = "1.0.3"
 api_version = 1
-requires_slidemage = ">=9.0"
+requires_slidemage = ">=0.14.36"
 summary = "Course links, admin slides and session-aware rendering for CAMPUSonline courses."
 author = "Jürgen Fleiß"
 homepage = "https://github.com/SlideMage/slidemage-plugin-campusonline"
